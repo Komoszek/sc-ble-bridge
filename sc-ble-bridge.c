@@ -37,7 +37,6 @@ struct inotify_data {
 static gboolean search_state = TRUE;
 static GDBusObjectManager * manager;
 
-//return number of read bytes
 int readFeature(GDBusProxy * proxy, char * data){
   GError * error = NULL;
 
@@ -162,12 +161,12 @@ static void destroy_device(int fd)
 
 	memset(&ev, 0, sizeof(ev));
 
+	g_object_unref(G_OBJECT(device_info.featureProxy));
 	device_info.featureProxy = NULL;
 	ev.type = UHID_DESTROY;
 
 	uhid_write(fd, &ev);
 
-	// cheeck if list is not empty
 	search_state = TRUE;
 }
 
@@ -287,7 +286,6 @@ static int event(int fd, int sc_fd)
 		break;
 	case UHID_STOP:
 		fprintf(stderr, "UHID_STOP from uhid\n");
-		//check if there are some
 		break;
 	case UHID_OPEN:
 		fprintf(stderr, "UHID_OPEN from uhid\n");
