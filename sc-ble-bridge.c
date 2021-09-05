@@ -127,6 +127,7 @@ static int write_feature(GDBusProxy * proxy, __u8 * data, size_t dataLen){
   GError * error = NULL;
   GVariant * vtuple;
   GVariant * vdata[2];
+	int error_code;
 
 	if(NULL == proxy)
 		return 1;
@@ -140,8 +141,9 @@ static int write_feature(GDBusProxy * proxy, __u8 * data, size_t dataLen){
 
   if(NULL == ret){
 		g_print("%s\n",error->message);
+		error_code = error->code;
 		g_clear_error(&error);
-    return error->code;
+    return error_code;
   }
 
 	g_variant_unref(ret);
@@ -176,14 +178,14 @@ static int create(struct Device_Info * device_info){
 	strcpy((char *)ev.u.create2.name, SC_VIRTUAL_NAME);
 
 	ret = ioctl(device_info->sc_fd, HIDIOCGRAWPHYS(SC_HID_MAX_BUF), buf);
-	if (ret < 0){
+	if (ret <= 0){
 		perror("HIDIOCGRAWPHYS");
 		return 1;
 	}
 	strcpy((char *)ev.u.create2.phys, buf);
 
 	ret = ioctl(device_info->sc_fd, HIDIOCGRAWUNIQ(SC_HID_MAX_BUF), buf);
-	if (ret < 0){
+	if (ret <= 0){
 		perror("HIDIOCGRAWUNIQ");
 		return 1;
 	}
@@ -260,7 +262,7 @@ static int move_sc_data(struct Device_Info * device_info){
 				fprintf(stderr,"\n");
 			}
 
-			uhid_write(device_info->uhid_fd,&ev);
+			uhid_write(device_info->uhid_fd, &ev);
 		}
 
 		return 0;
@@ -348,20 +350,10 @@ static int event(struct Device_Info * device_info){
 
 	switch (ev.type) {
 	case UHID_START:
-		fprintf(stderr, "UHID_START from uhid\n");
-		break;
 	case UHID_STOP:
-		fprintf(stderr, "UHID_STOP from uhid\n");
-		break;
 	case UHID_OPEN:
-		fprintf(stderr, "UHID_OPEN from uhid\n");
-		break;
 	case UHID_CLOSE:
-		fprintf(stderr, "UHID_CLOSE from uhid\n");
-		break;
 	case UHID_OUTPUT:
-		if(verbose_flag)
-			fprintf(stderr, "UHID_OUTPUT from uhid\n");
 		break;
 	case UHID_SET_REPORT:
 		handle_set_report(device_info, &ev);
@@ -401,6 +393,7 @@ static void parse_args(int argc, char ** argv){
 static int open_sc(char * path){
 	int fd, ret;
 	char buf[SC_HID_MAX_BUF];
+
 	struct hidraw_devinfo info;
 
 	fd = open(path, O_RDWR|O_NONBLOCK);
@@ -417,14 +410,15 @@ static int open_sc(char * path){
 	}
 
 	ret = ioctl(fd, HIDIOCGRAWNAME(SC_HID_MAX_BUF), buf);
-	if (ret < 0){
+
+	if (ret <= 0){
 		perror("HIDIOCGRAWNAME");
 		close(fd);
 		return -1;
 	}
 
 	if(BUS_BLUETOOTH == info.bustype && SC_VENDOR == info.vendor &&
-		SC_PRODUCT == info.product && 0 == strcmp(buf,SC_REAL_NAME)){
+		SC_PRODUCT == info.product && 0 == strcmp(buf, SC_REAL_NAME)){
 		return fd;
 	}
 
@@ -513,7 +507,7 @@ static int setup_bluetooth_info(struct Device_Info * device_info, GDBusObjectMan
 	device_info->featureProxy = NULL;
 
 	ret = ioctl(device_info->sc_fd, HIDIOCGRAWUNIQ(SC_HID_MAX_BUF), buf);
-	if (ret < 0){
+	if (ret <= 0){
 		perror("HIDIOCGRAWUNIQ");
 		return 1;
 	}
@@ -583,7 +577,7 @@ static void add_new_vsc(int sc_fd){
 		return;
 	}
 
-	struct Device_Info * device_info = (struct Device_Info *)malloc(sizeof(struct Device_Info*));
+	struct Device_Info * device_info = (struct Device_Info *)calloc(1, sizeof(struct Device_Info));
 
 	if(NULL == device_info){
 		perror("malloc");
@@ -610,7 +604,7 @@ static int create_middleman(struct Device_Info * device_info){
 
 	g_unix_fd_add(device_info->sc_fd, G_IO_IN | G_IO_HUP, sc_fd_callback, device_info);
 	device_info->uhid_fd_source = g_unix_fd_add(device_info->uhid_fd, G_IO_IN, uhid_fd_callback, device_info);
-	fprintf(stderr,"Connected to SC\n");
+	fprintf(stderr,"Steam Controller connected\n");
 	return 0;
 }
 
