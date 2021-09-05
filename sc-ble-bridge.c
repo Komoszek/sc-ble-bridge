@@ -369,10 +369,9 @@ static int event(struct Device_Info * device_info){
 }
 
 static void print_help(char * name){
-	printf("USAGE: %s [-v]\n", name);
-	printf("Options:\n");
-	printf("    -v - verbose mode; print all data from and to Steam Controller\n");
-	printf("    -h - help; prints this message\n");
+	printf("USAGE: %s [-v]\n"
+		     "    -v - verbose mode; print all data send from and to Steam Controller\n"
+				 "    -h - help; prints this message\n", name);
 }
 
 static void parse_args(int argc, char ** argv){
