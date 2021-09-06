@@ -1,5 +1,5 @@
 LIBS=gio-unix-2.0
-CFLAGS=-O0 -ggdb3 -Wall `pkg-config --cflags $(LIBS)`
+CFLAGS=-O0 -ggdb3 -Wall -Werror `pkg-config --cflags $(LIBS)`
 LDFLAGS=`pkg-config --libs $(LIBS)`
 
 .PHONY: clean

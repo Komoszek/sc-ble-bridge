@@ -6,6 +6,7 @@
 #include <linux/uhid.h>
 #include <linux/hidraw.h>
 #include <gio/gio.h>
+#include <glib-unix.h>
 
 #define UHID_PATH "/dev/uhid"
 #define SC_FEATURE_CHARACTERISTIC "100f6c34-1735-4313-b402-38567131e5f3"
@@ -62,8 +63,8 @@ int main(int argc, char **argv)
 	parse_args(argc, argv);
 
 	manager = g_dbus_object_manager_client_new_for_bus_sync(
-		G_BUS_TYPE_SYSTEM,G_DBUS_OBJECT_MANAGER_CLIENT_FLAGS_NONE,"org.bluez","/",
-		NULL,NULL,NULL,NULL,NULL);
+		G_BUS_TYPE_SYSTEM, G_DBUS_OBJECT_MANAGER_CLIENT_FLAGS_NONE, "org.bluez", "/",
+		NULL, NULL, NULL, NULL, NULL);
 
 	if(NULL == manager){
 		fprintf(stderr, "Cannot connect to bluez\n");
@@ -77,7 +78,7 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	if (inotify_add_watch(inotify_fd, "/dev", IN_CREATE | IN_DELETE) < 0) {
+	if(inotify_add_watch(inotify_fd, "/dev", IN_CREATE | IN_DELETE) < 0) {
 	   fprintf(stderr, "Cannot watch '/dev': %s\n", strerror(errno));
 	   return EXIT_FAILURE;
 	}
@@ -101,7 +102,7 @@ static int read_feature(GDBusProxy * proxy, char * data){
 
 	int i = 0;
 
-  GVariant * opt = g_variant_new ("(a{sv})", NULL);
+  GVariant * opt = g_variant_new("(a{sv})", NULL);
   GVariant * ret = g_dbus_proxy_call_sync(proxy, "ReadValue",
   opt, G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
 
@@ -113,8 +114,8 @@ static int read_feature(GDBusProxy * proxy, char * data){
 
   GVariantIter * iter = NULL;
 
-  g_variant_get (ret, "(ay)", &iter);
-  while (g_variant_iter_loop (iter, "y", &(data[i]))){
+  g_variant_get(ret, "(ay)", &iter);
+  while(g_variant_iter_loop (iter, "y", &(data[i]))){
     i++;
   }
 
@@ -133,14 +134,14 @@ static int write_feature(GDBusProxy * proxy, __u8 * data, size_t dataLen){
 		return 1;
 
   vdata[0] = g_variant_new_fixed_array(G_VARIANT_TYPE_BYTE, data, dataLen, sizeof(char));
-  vdata[1] = g_variant_new ("a{sv}", NULL);
+  vdata[1] = g_variant_new("a{sv}", NULL);
   vtuple = g_variant_new_tuple(vdata, 2);
 
   GVariant * ret = g_dbus_proxy_call_sync(proxy, "WriteValue",
   vtuple, G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
 
   if(NULL == ret){
-		g_print("%s\n",error->message);
+		g_print("%s\n", error->message);
 		error_code = error->code;
 		g_clear_error(&error);
     return error_code;
@@ -154,10 +155,10 @@ static int uhid_write(int fd, const struct uhid_event *ev){
 	ssize_t ret;
 
 	ret = write(fd, ev, sizeof(*ev));
-	if (ret < 0) {
+	if(ret < 0) {
 		fprintf(stderr, "Cannot write to uhid: %m\n");
 		return -errno;
-	} else if (ret != sizeof(*ev)) {
+	} else if(ret != sizeof(*ev)) {
 		fprintf(stderr, "Wrong size written to uhid: %zd != %zu\n",
 			ret, sizeof(ev));
 		return -EFAULT;
@@ -178,33 +179,33 @@ static int create(struct Device_Info * device_info){
 	strcpy((char *)ev.u.create2.name, SC_VIRTUAL_NAME);
 
 	ret = ioctl(device_info->sc_fd, HIDIOCGRAWPHYS(SC_HID_MAX_BUF), buf);
-	if (ret <= 0){
+	if(ret <= 0){
 		perror("HIDIOCGRAWPHYS");
 		return 1;
 	}
 	strcpy((char *)ev.u.create2.phys, buf);
 
 	ret = ioctl(device_info->sc_fd, HIDIOCGRAWUNIQ(SC_HID_MAX_BUF), buf);
-	if (ret <= 0){
+	if(ret <= 0){
 		perror("HIDIOCGRAWUNIQ");
 		return 1;
 	}
 
-	strcpy((char*)ev.u.create2.uniq, buf);
+	strcpy((char *)ev.u.create2.uniq, buf);
 
 	ret = ioctl(device_info->sc_fd, HIDIOCGRDESCSIZE, &ev.u.create2.rd_size);
-	if (ret < 0){
+	if(ret < 0){
 		perror("HIDIOCGRDESCSIZE");
 		return 1;
 	} else if(ret > SC_HID_MAX_BUF -1){
-		fprintf(stderr,"HIDIOCGRDESCSIZE Too big\n");
+		fprintf(stderr, "HIDIOCGRDESCSIZE Too big\n");
 		return 1;
 	}
 
 	/* Get Report Descriptor */
 	rpt_desc.size = ev.u.create2.rd_size;
 	ret = ioctl(device_info->sc_fd, HIDIOCGRDESC, &rpt_desc);
-	if (ret < 0) {
+	if(ret < 0) {
 		perror("HIDIOCGRDESC");
 		return 1;
 	}
@@ -253,13 +254,13 @@ static int move_sc_data(struct Device_Info * device_info){
 
 			ev.type = UHID_INPUT2;
 			ev.u.input2.size = ret;
-			memcpy(ev.u.input2.data,buf,ret);
+			memcpy(ev.u.input2.data, buf, ret);
 
 			if(verbose_flag){
-				fprintf(stderr,"Data from SC:\n");
+				fprintf(stderr, "Data from SC:\n");
 				for(i = 0;i < ret;i++)
-					fprintf(stderr,"%hhx ",buf[i]);
-				fprintf(stderr,"\n");
+					fprintf(stderr, "%hhx ", buf[i]);
+				fprintf(stderr, "\n");
 			}
 
 			uhid_write(device_info->uhid_fd, &ev);
@@ -281,16 +282,16 @@ static void handle_set_report(struct Device_Info * device_info, struct uhid_even
 	int id, ret, i;
 
 	if(verbose_flag){
-		fprintf(stderr,"UHID_SET_REPORT\n");
+		fprintf(stderr, "UHID_SET_REPORT\n");
 		for(i = 0;i < ev->u.set_report.size;i++){
-			fprintf(stderr,"%hhx ",ev->u.set_report.data[i]);
+			fprintf(stderr, "%hhx ", ev->u.set_report.data[i]);
 		}
-		fprintf(stderr,"\n");
+		fprintf(stderr, "\n");
 	}
 
 	id = ev->u.set_report.id;
 
-	ret = write_feature(device_info->featureProxy,ev->u.set_report.data+1,ev->u.set_report.size-1);
+	ret = write_feature(device_info->featureProxy, ev->u.set_report.data+1, ev->u.set_report.size-1);
 
 	ev->type = UHID_SET_REPORT_REPLY;
 	ev->u.set_report_reply.id = id;
@@ -308,11 +309,11 @@ static void handle_get_report(struct Device_Info * device_info, struct uhid_even
 	ret = read_feature(device_info->featureProxy, buf);
 
 	if(verbose_flag){
-		fprintf(stderr,"UHID_GET_REPORT\n");
+		fprintf(stderr, "UHID_GET_REPORT\n");
 		for(i = 0;i < ret;i++){
-			fprintf(stderr,"%hhx ",buf[i]);
+			fprintf(stderr, "%hhx ", buf[i]);
 		}
-		fprintf(stderr,"\n");
+		fprintf(stderr, "\n");
 	}
 
 	if(0 != ret){
@@ -325,7 +326,7 @@ static void handle_get_report(struct Device_Info * device_info, struct uhid_even
 	ev->u.get_report_reply.err = err;
 	ev->u.get_report_reply.size = ret;
 	if(ret > 0)
-		memcpy(ev->u.get_report_reply.data,buf+1,ev->u.get_report_reply.size);
+		memcpy(ev->u.get_report_reply.data, buf+1, ev->u.get_report_reply.size);
 
 	uhid_write(device_info->uhid_fd, ev);
 }
@@ -336,19 +337,19 @@ static int event(struct Device_Info * device_info){
 
 	memset(&ev, 0, sizeof(ev));
 	ret = read(device_info->uhid_fd, &ev, sizeof(ev));
-	if (0 == ret) {
+	if(0 == ret) {
 		fprintf(stderr, "Read HUP on uhid\n");
 		return -EFAULT;
-	} else if (ret < 0) {
+	} else if(ret < 0) {
 		fprintf(stderr, "Cannot read uhid: %m\n");
 		return -errno;
-	} else if (ret != sizeof(ev)) {
+	} else if(ret != sizeof(ev)) {
 		fprintf(stderr, "Invalid size read from uhid: %zd != %zu\n",
 			ret, sizeof(ev));
 		return -EFAULT;
 	}
 
-	switch (ev.type) {
+	switch(ev.type) {
 	case UHID_START:
 	case UHID_STOP:
 	case UHID_OPEN:
@@ -376,8 +377,8 @@ static void print_help(char * name){
 
 static void parse_args(int argc, char ** argv){
 	char c;
-	while ((c = getopt (argc, argv, "vh")) != -1)
-    switch (c)
+	while((c = getopt (argc, argv, "vh")) != -1)
+    switch(c)
       {
       case 'v':
         verbose_flag = TRUE;
@@ -402,7 +403,7 @@ static int open_sc(char * path){
 	}
 
 	ret = ioctl(fd, HIDIOCGRAWINFO, &info);
-	if (ret < 0) {
+	if(ret < 0) {
 		perror("HIDIOCGRAWINFO");
 		close(fd);
 		return -1;
@@ -410,7 +411,7 @@ static int open_sc(char * path){
 
 	ret = ioctl(fd, HIDIOCGRAWNAME(SC_HID_MAX_BUF), buf);
 
-	if (ret <= 0){
+	if(ret <= 0){
 		perror("HIDIOCGRAWNAME");
 		close(fd);
 		return -1;
@@ -431,21 +432,21 @@ static int initial_find_sc(){
 	struct dirent *dp;
 	int sc_fd = -1;
 	char path[288];
-	if (NULL == (dirp = opendir("/dev"))) {
+	if(NULL == (dirp = opendir("/dev"))) {
 		perror("opendir");
 		exit(EXIT_FAILURE);
 	}
 	do {
 		errno = 0;
-		if ((dp = readdir(dirp)) != NULL) {
-			if(0 == strncmp(dp->d_name,"hidraw",6)){
-				sprintf(path,"/dev/%s",dp->d_name);
+		if((dp = readdir(dirp)) != NULL) {
+			if(0 == strncmp(dp->d_name, "hidraw", 6)){
+				sprintf(path, "/dev/%s", dp->d_name);
 				process_new_hidraw(path);
 			}
 		}
-	} while (dp != NULL);
+	} while(dp != NULL);
 
-	if (errno != 0){
+	if(errno != 0){
 		perror("readdir");
 		exit(EXIT_FAILURE);
 	}
@@ -506,7 +507,7 @@ static int setup_bluetooth_info(struct Device_Info * device_info, GDBusObjectMan
 	device_info->featureProxy = NULL;
 
 	ret = ioctl(device_info->sc_fd, HIDIOCGRAWUNIQ(SC_HID_MAX_BUF), buf);
-	if (ret <= 0){
+	if(ret <= 0){
 		perror("HIDIOCGRAWUNIQ");
 		return 1;
 	}
@@ -520,7 +521,7 @@ static int setup_bluetooth_info(struct Device_Info * device_info, GDBusObjectMan
 		obj = temp->data;
 		temp = temp->next;
 
-		characteristic = g_dbus_object_get_interface(obj,"org.bluez.GattCharacteristic1");
+		characteristic = g_dbus_object_get_interface(obj, "org.bluez.GattCharacteristic1");
 		if(NULL != characteristic){
 			proxy = G_DBUS_PROXY(characteristic);
 
@@ -542,7 +543,7 @@ static gboolean sc_fd_callback(gint fd, GIOCondition condition, gpointer user_da
 	struct Device_Info * device_info = (struct Device_Info *)user_data;
 
 	if(condition & G_IO_HUP){
-		fprintf(stderr,"Steam Controller disconnected\n");
+		fprintf(stderr, "Steam Controller disconnected\n");
 		destroy_device(device_info);
 		return G_SOURCE_REMOVE;
 	}
@@ -570,7 +571,7 @@ static gboolean uhid_fd_callback(gint fd, GIOCondition condition, gpointer user_
 
 static void add_new_vsc(int sc_fd){
 	int fd = open(UHID_PATH, O_RDWR | O_CLOEXEC);
-	if (fd < 0) {
+	if(fd < 0) {
 		fprintf(stderr, "Cannot open uhid %s: %m\n", UHID_PATH);
 		close(sc_fd);
 		return;
@@ -603,7 +604,7 @@ static int create_middleman(struct Device_Info * device_info){
 
 	g_unix_fd_add(device_info->sc_fd, G_IO_IN | G_IO_HUP, sc_fd_callback, device_info);
 	device_info->uhid_fd_source = g_unix_fd_add(device_info->uhid_fd, G_IO_IN, uhid_fd_callback, device_info);
-	fprintf(stderr,"Steam Controller connected\n");
+	fprintf(stderr, "Steam Controller connected\n");
 	return 0;
 }
 
@@ -642,7 +643,7 @@ static gboolean inotify_fd_callback(gint fd, GIOCondition condition, gpointer us
 					 	continue;
 
 	         if(event->mask & IN_CREATE){
-						 sprintf(path, "/dev/%s",event->name);
+						 sprintf(path, "/dev/%s", event->name);
 						 process_new_hidraw(path);
 					 }
 	     }
