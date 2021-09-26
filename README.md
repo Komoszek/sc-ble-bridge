@@ -11,7 +11,7 @@ KERNEL=="hidraw*", KERNELS=="*28DE:*", MODE="0660", TAG+="uaccess"
 after the change it will look like this:
 ```
 # Valve HID devices over bluetooth hidraw
-KERNEL=="hidraw*", KERNELS=="*28DE:*", ATTRS{idProduct}!="1106" MODE="0660", TAG+="uaccess"
+KERNEL=="hidraw*", KERNELS=="*28DE:*", ATTRS{idProduct}!="1106", MODE="0660", TAG+="uaccess"
 ```
 Now, create new rules file e.g. `69-sc-ble-bridge.rules` with the following rules:
 ```
